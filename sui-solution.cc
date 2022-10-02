@@ -144,28 +144,36 @@ typedef struct {
 	SearchAction parent_act;
 } Node_Assembly;
 
+struct Node_Queue{
+	double value;
+	std::shared_ptr<SearchState> parent;
+	bool operator<(const Node_Queue& rhs) const {
+		return value > rhs.value;
+	}
+};
+
 std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 	if (init_state.isFinal())
 		return {};
 
 	std::set<SearchState> closed;
-	std::priority_queue<std::tuple<double, std::shared_ptr<SearchState>>, 
-	std::vector<std::tuple<double, std::shared_ptr<SearchState>>>, 
-	std::greater<std::tuple<double, std::shared_ptr<SearchState>>>> open;
+	std::priority_queue<Node_Queue> open;
 	std::map<std::shared_ptr<SearchState>, Node_Assembly> tree;
 
 	bool reached_final = false;
-	int initial_value = 0;
+	double initial_value = 0;
 
 	std::shared_ptr<SearchState> parent_state = std::make_shared<SearchState>(init_state);
 	Node_Assembly init_node = {parent_state, init_state.actions()[0]};
-	open.push({initial_value, parent_state});
+	Node_Queue init_queue = {initial_value, parent_state};
+	open.push(init_queue);
 	tree.insert({parent_state, init_node});
 
 	while (!open.empty() && !reached_final) {
-		double current_h = std::get<0>(open.top());
-		auto current_parent = std::get<1>(open.top());
+		double current_h = open.top().value;
+		std::shared_ptr<SearchState> current_parent = open.top().parent;
 		
+		open.pop();
 		SearchState working_state(*current_parent);
 
 		std::vector<SearchAction> actions = working_state.actions();
@@ -175,7 +183,7 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 			if (closed.count(new_state) == 0) {
 				closed.insert(new_state);
 
-				auto new_shared = std::make_shared<SearchState>(new_state);
+				std::shared_ptr<SearchState> new_shared = std::make_shared<SearchState>(new_state);
 				double h = current_h + compute_heuristic(new_state, *heuristic_);
 				open.push({h, new_shared});
 				
@@ -188,7 +196,6 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 				}
 			}
 		}
-		open.pop();
 	}
 	
 	if(reached_final){
