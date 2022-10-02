@@ -129,14 +129,27 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 }
 
 double StudentHeuristic::distanceLowerBound(const GameState &state) const {
-    int cards_out_of_home = king_value * colors_list.size();
-    for (const auto &home : state.homes) {
-        auto opt_top = home.topCard();
-        if (opt_top.has_value())
-            cards_out_of_home -= opt_top->value;
-    }
+	double m_e = 0;  
+	double number_of_cards_in_foundation = 0;  
 
-    return cards_out_of_home;
+	for (const auto &home : state.homes) {
+		auto opt_top = home.topCard();
+		if (opt_top.has_value())
+			number_of_cards_in_foundation += opt_top->value;
+	}
+	
+	double h_n = 52 - number_of_cards_in_foundation + m_e;
+	return h_n;
+
+
+    // int cards_out_of_home = king_value * colors_list.size();
+    // for (const auto &home : state.homes) {
+    //     auto opt_top = home.topCard();
+    //     if (opt_top.has_value())
+    //         cards_out_of_home -= opt_top->value;
+    // }
+
+    // return cards_out_of_home;
 }
 
 typedef struct {
@@ -144,7 +157,8 @@ typedef struct {
 	SearchAction parent_act;
 } Node_Assembly;
 
-struct Node_Queue{
+struct Node_Queue {
+	int depth;
 	double value;
 	std::shared_ptr<SearchState> parent;
 	bool operator<(const Node_Queue& rhs) const {
@@ -162,19 +176,22 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 
 	bool reached_final = false;
 	double initial_value = 0;
+	int current_depth = 0;
 
 	std::shared_ptr<SearchState> parent_state = std::make_shared<SearchState>(init_state);
 	Node_Assembly init_node = {parent_state, init_state.actions()[0]};
-	Node_Queue init_queue = {initial_value, parent_state};
+	Node_Queue init_queue = {initial_value, current_depth, parent_state};
 	open.push(init_queue);
 	tree.insert({parent_state, init_node});
 
 	while (!open.empty() && !reached_final) {
 		double current_h = open.top().value;
 		std::shared_ptr<SearchState> current_parent = open.top().parent;
+		current_depth = open.top().depth;
 		
 		open.pop();
 		SearchState working_state(*current_parent);
+		
 
 		std::vector<SearchAction> actions = working_state.actions();
 		for (auto act : actions) {
@@ -184,12 +201,12 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 				closed.insert(new_state);
 
 				std::shared_ptr<SearchState> new_shared = std::make_shared<SearchState>(new_state);
-				double h = current_h + compute_heuristic(new_state, *heuristic_);
-				open.push({h, new_shared});
+				double h = current_depth + compute_heuristic(new_state, *heuristic_);
+				open.push({current_depth+1, h, new_shared});
 				
 				Node_Assembly parent_node = {current_parent, act};		
 				tree.insert({new_shared, parent_node});
-				if(new_state.isFinal()){
+				if (new_state.isFinal()){
 					reached_final = true;
 					parent_state = new_shared;
 					break;
