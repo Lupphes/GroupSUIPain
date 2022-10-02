@@ -139,73 +139,70 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const {
     return cards_out_of_home;
 }
 
+typedef struct {
+	std::shared_ptr<SearchState> parent;
+	SearchAction parent_act;
+} Node_Assembly;
+
 std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
-	std::map<const SearchState, std::tuple<std::shared_ptr<const SearchState>, SearchAction>> closed;
-	
+	if (init_state.isFinal())
+		return {};
+
+	std::set<SearchState> closed;
 	std::priority_queue<std::tuple<double, std::shared_ptr<SearchState>>, 
 	std::vector<std::tuple<double, std::shared_ptr<SearchState>>>, 
-	std::greater<std::tuple<double, std::shared_ptr<SearchState>>>> working_tree;
+	std::greater<std::tuple<double, std::shared_ptr<SearchState>>>> open;
+	std::map<std::shared_ptr<SearchState>, Node_Assembly> tree;
 
-	std::shared_ptr<SearchState> final_state = std::make_shared<SearchState>(init_state);
-	working_tree.push({0, final_state});
-	
-	std::cout << "Inicializovano" << std::endl;
-	
-	bool found_result = false;
-	
-	while (!working_tree.empty() && !found_result) {
-		double working_state_h = std::get<0>(working_tree.top());
-		SearchState working_state_ptr = *(std::get<1>(working_tree.top()));
+	bool reached_final = false;
+	int initial_value = 0;
+
+	std::shared_ptr<SearchState> parent_state = std::make_shared<SearchState>(init_state);
+	Node_Assembly init_node = {parent_state, init_state.actions()[0]};
+	open.push({initial_value, parent_state});
+	tree.insert({parent_state, init_node});
+
+	while (!open.empty() && !reached_final) {
+		double current_h = std::get<0>(open.top());
+		auto current_parent = std::get<1>(open.top());
 		
-		std::vector<SearchAction> actions = working_state_ptr.actions();
-		
-		for (size_t i = 0; i < actions.size(); i++) {
-			SearchState new_state = actions[i].execute(working_state_ptr);
-	
-			auto it = closed.find(new_state);
+		SearchState working_state(*current_parent);
+
+		std::vector<SearchAction> actions = working_state.actions();
+		for (auto act : actions) {
+			SearchState new_state = act.execute(working_state);
 			
-			if (it == closed.end()) {
-				std::tuple<std::shared_ptr<const SearchState>, SearchAction> new_tuple = {
-					std::make_shared<const SearchState>(working_state_ptr), SearchAction(actions[i])
-				};
-				closed.insert({new_state, new_tuple});
+			if (closed.count(new_state) == 0) {
+				closed.insert(new_state);
+
+				auto new_shared = std::make_shared<SearchState>(new_state);
+				double h = current_h + compute_heuristic(new_state, *heuristic_);
+				open.push({h, new_shared});
 				
-				double h = working_state_h + compute_heuristic(new_state, *heuristic_);
-				working_tree.push({h, std::make_shared<SearchState>(new_state)});
-				// std::cout << h << std::endl;
-			}
-			
-			if (new_state.isFinal()){
-				found_result = true;
-				SearchState working_state(new_state);
-				final_state = std::make_shared<SearchState>(working_state);
-				break;
+				Node_Assembly parent_node = {current_parent, act};		
+				tree.insert({new_shared, parent_node});
+				if(new_state.isFinal()){
+					reached_final = true;
+					parent_state = new_shared;
+					break;
+				}
 			}
 		}
-		
-		working_tree.pop();
+		open.pop();
 	}
 	
-	std::cout << "hotovo" << std::endl;
-	
-	std::vector<SearchAction> solution;
-	if (found_result) {
-		std::shared_ptr<const SearchState> cur_state = final_state;
-		while (cur_state != nullptr) {
-			auto search = closed.find(*cur_state);
-			if(search == closed.end()){
+	if(reached_final){
+		std::vector<SearchAction> solution;
+		while(true) {
+			auto tree_find = tree.find(parent_state);
+			if(tree_find->second.parent == parent_state){
 				break;
 			}
-			auto tuple = search->second;
-			auto new_action = SearchAction(std::get<1>(search->second));
-			solution.push_back(new_action);
-			// std::cout << new_action << std::endl;
-			cur_state = std::get<0>(tuple);
+			auto node = tree_find->second;
+			solution.insert(solution.begin(), node.parent_act);
+			parent_state = node.parent;
 		}
-		for (const auto & action : std::vector<SearchAction> (solution.rbegin(), solution.rend())){
-			std::cout << action << std::endl;
-		}
-		return std::vector<SearchAction> (solution.rbegin(), solution.rend());
+		return solution;
 	}
 	return {};
 }
