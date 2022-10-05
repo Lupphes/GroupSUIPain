@@ -3,6 +3,7 @@
 #include <stack>
 #include <set>
 #include "memusage.h"
+#include <optional>
 
 typedef struct {
 	std::shared_ptr<SearchState> parent;
@@ -129,17 +130,58 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 }
 
 double StudentHeuristic::distanceLowerBound(const GameState &state) const {
-	double m_e = 0;  
+	double number_of_cards_to_free = 0;  
 	double number_of_cards_in_foundation = 0;  
 
-	for (const auto &home : state.homes) {
-		auto opt_top = home.topCard();
-		if (opt_top.has_value())
-			number_of_cards_in_foundation += opt_top->value;
+	int free_spaces = 0; 
+	// Count and remember the free spaces 
+	// if there is a card, try to play it
+	std::vector<std::optional<Card>> free_cards = {};
+	for (const auto &free : state.free_cells) {
+		if (free.topCard() == std::nullopt) {
+			free_spaces++;
+		} else {
+			free_cards.push_back(free.topCard());
+		}
 	}
 	
-	double h_n = 52 - number_of_cards_in_foundation + m_e;
-	return h_n;
+	for (const auto &home : state.homes) {
+		auto opt_top = home.topCard();
+		// Check how many cards are in foundation
+		if (opt_top.has_value())
+			number_of_cards_in_foundation += opt_top->value;
+		// Check if you can play card from free cell
+		// and if yes, you should play it
+		for (const auto &free_card : free_cards) {
+			if (free_card.has_value() == opt_top->value + 1) {
+				return 52 - number_of_cards_in_foundation;
+			}
+		}
+		// Check how many card are needed for next move and play 
+		// the move with least amount of moves
+		// also don't play a move when you know that there is a better one
+		int best_move = INFINITY;
+		for (const auto &card : state.stacks) {
+			std::optional<Card> new_card;
+			int count = 0;
+			// Take a new card, if you cannot submit it to next 
+			while ((new_card = card.getCard()) == std::nullopt)) {
+				if (home.canAccept(new_card)) {
+					break;
+				}
+				count++;
+			}
+			if (count < best_move) 
+				best_move == count;
+		}
+	}
+
+	// The value 52 was picked by calculating this value
+	// cards_out_of_home = king_value * colors_list.size()
+
+
+	double heuristika = 52 - number_of_cards_in_foundation + number_of_cards_to_free;
+	return heuristika;
 
 
     // int cards_out_of_home = king_value * colors_list.size();
@@ -158,8 +200,8 @@ typedef struct {
 } Node_Assembly;
 
 struct Node_Queue {
-	int depth;
 	double value;
+	int depth;
 	std::shared_ptr<SearchState> parent;
 	bool operator<(const Node_Queue& rhs) const {
 		return value > rhs.value;
@@ -185,7 +227,6 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 	tree.insert({parent_state, init_node});
 
 	while (!open.empty() && !reached_final) {
-		double current_h = open.top().value;
 		std::shared_ptr<SearchState> current_parent = open.top().parent;
 		current_depth = open.top().depth;
 		
@@ -202,7 +243,7 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 
 				std::shared_ptr<SearchState> new_shared = std::make_shared<SearchState>(new_state);
 				double h = current_depth + compute_heuristic(new_state, *heuristic_);
-				open.push({current_depth+1, h, new_shared});
+				open.push({h, current_depth+1, new_shared});
 				
 				Node_Assembly parent_node = {current_parent, act};		
 				tree.insert({new_shared, parent_node});
