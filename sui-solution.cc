@@ -5,41 +5,53 @@
 #include "memusage.h"
 
 typedef struct {
-	std::shared_ptr<SearchState> parent;
-	SearchAction parent_act;
-	int depth; // Just for DFS, no need in BFS
+	std::shared_ptr<SearchState> parent; // Pointer to parent SearchState
+	SearchAction parent_act;  // Action which is used on parent SearchState to get current State
+	int depth;  // Used to track depth in Tree (only in DFS)
 } Node;
 std::vector<SearchAction> BreadthFirstSearch::solve(const SearchState &init_state) {
-	std::set<SearchState> closed;
-	std::queue<std::shared_ptr<SearchState>> open;
-	std::map<std::shared_ptr<SearchState>, Node> tree;
+	std::set<SearchState> closed; // Closed list for SearchStates
+	std::queue<std::shared_ptr<SearchState>> open; //Open Queue for Searchstates (not expanded nodes)
+	std::map<std::shared_ptr<SearchState>, Node> tree; // SearchState tree
 
 	if(init_state.isFinal()){
 		return {};
 	}
-	bool reached_final = false;
-	std::shared_ptr<SearchState> parent_state = std::make_shared<SearchState>(init_state);
-	open.push(parent_state);
 
-	auto old_memory = getCurrentRSS(); 
-	while(!open.empty()){
+	bool reached_final = false;
+
+	std::shared_ptr<SearchState> parent_state = std::make_shared<SearchState>(init_state);
+
+	open.push(parent_state); //Pushing initial state to open list
+
+	auto old_memory = getCurrentRSS();
+
+	while(!open.empty() && !reached_final){
+		/* Getting SearchState from top of Queue */
 		auto current_parent = open.front();
 		SearchState working_state(*current_parent);
 		open.pop();
+
+
 		auto actions = working_state.actions();
+		/* Tracking memory */
 		auto taken_memory = getCurrentRSS();
 		if((taken_memory - old_memory)*4 + taken_memory > mem_limit_){
+			//  Taken memory + 4*difference between last round and current round
 			return {};
 		}
 		old_memory = taken_memory;
+
 		for(auto act : actions){
 			auto new_state = act.execute(working_state);
-			if(closed.count(new_state) == 0){
+			if(closed.count(new_state) == 0){ // if state is in closed, dont do anything
 				closed.insert(new_state);
 				auto new_shared = std::make_shared<SearchState>(new_state);
 				open.push(new_shared);
-				Node parent_node = {current_parent, act, 0};		
+				//Generating new node to the tree
+				Node parent_node = {current_parent, act, 0};
 				tree.insert({new_shared,parent_node});
+
 				if(new_state.isFinal()){
 					reached_final = true;
 					parent_state = new_shared;
@@ -47,11 +59,10 @@ std::vector<SearchAction> BreadthFirstSearch::solve(const SearchState &init_stat
 				}
 			}
 		}
-		if(reached_final){
-			break;
-		}
 	}
+
 	if(reached_final){
+		/* Backtracking the result from the final node */
 		std::vector<SearchAction> solution;
 		while(true){
 			auto tree_find = tree.find(parent_state);
@@ -68,9 +79,11 @@ std::vector<SearchAction> BreadthFirstSearch::solve(const SearchState &init_stat
 }
 
 std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state) {
-	std::set<SearchState> closed;
-	std::stack<std::shared_ptr<SearchState>> open;
-	std::map<std::shared_ptr<SearchState>, Node> tree;
+
+	std::set<SearchState> closed; // Closed list for SearchStates
+	std::stack<std::shared_ptr<SearchState>> open; //Open Stack for Searchstates (not expanded nodes)
+	std::map<std::shared_ptr<SearchState>, Node> tree; // SearchState tree
+
 	if(init_state.isFinal()){
 		return {};
 	}
@@ -78,18 +91,21 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 	bool reached_final = false;
 	std::shared_ptr<SearchState> parent_state = std::make_shared<SearchState>(init_state);
 	int current_depth = 0;
+	/** Inserting initial node **/
 	Node init_node = {parent_state, init_state.actions()[0], 0};
 	open.push(parent_state);
 	tree.insert({parent_state,init_node});
 
 	while(!open.empty()){
+		/* Poping from the stack */
 		auto current_parent = open.top();
 		SearchState working_state(*current_parent);
-		current_depth = tree.find(current_parent)->second.depth;
+		current_depth = tree.find(current_parent)->second.depth; //getting the depth of parent node
 		open.pop();
 		if(current_depth >= depth_limit_){
-			continue;
+			continue; // skipping the node expansion
 		}
+
 		auto actions = working_state.actions();
 		for(auto act : actions){
 			auto new_state = act.execute(working_state);
@@ -97,7 +113,7 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 				closed.insert(new_state);
 				auto new_shared = std::make_shared<SearchState>(new_state);
 				open.push(new_shared);
-				Node parent_node = {current_parent, act, current_depth+1};		
+				Node parent_node = {current_parent, act, current_depth+1}; //incrementing depth
 				tree.insert({new_shared,parent_node});
 				if(new_state.isFinal()){
 					reached_final = true;
@@ -112,6 +128,7 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 	}
 
 	if(reached_final){
+		/* Backtracking the result */
 		std::vector<SearchAction> solution;
 		while(true){
 			auto tree_find = tree.find(parent_state);
