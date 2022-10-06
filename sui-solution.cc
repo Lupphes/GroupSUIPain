@@ -148,7 +148,7 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 }
 
 double StudentHeuristic::distanceLowerBound(const GameState &state) const {
-	double number_of_cards_to_free = 0;  
+	double number_of_cards_to_free = 0;
 	double number_of_cards_in_foundation = 0;  
 	// The normal value 52 was picked by calculating this value
 	// this can vary by number of stacks
@@ -165,7 +165,7 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const {
 			free_cards.push_back(free.topCard());
 		}
 	}
-	
+
 	for (const auto &home : state.homes) {
 		auto opt_top = home.topCard();
 		// Check how many cards are in foundation
@@ -189,6 +189,8 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const {
             int count = 0;
 			for (int i = stack.storage().size(); i > 0; i--) {
                 auto new_card = stack.storage()[i];
+//                printf("%d and %d\n", stack.storage()[i].value, stack.storage().back().value);
+//                printf("%b a %d|", home.canAccept(new_card), count);
 				if (home.canAccept(new_card))
 					break;
 				count++;
@@ -197,9 +199,10 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const {
 			 	best_move = count;
 			 }
 		}
+        number_of_cards_to_free = best_move;
 	}
-
-	return cards_out_of_home - number_of_cards_in_foundation + number_of_cards_to_free;
+//    printf("%d", number_of_cards_to_free);
+	return (cards_out_of_home - number_of_cards_in_foundation)*state.homes.size() + number_of_cards_to_free;
 }
 
 typedef struct {
@@ -250,8 +253,8 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
         auto taken_memory = getCurrentRSS();
         if((taken_memory - old_memory)*4 + taken_memory > mem_limit_) {
             //  Taken memory + 4 * difference between last round and current round
-            std::cout << "1";
-            std::cout.flush();
+//            std::cout << "1";
+//            std::cout.flush();
             return {};
         }
         old_memory = taken_memory;
@@ -288,11 +291,11 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 			solution.insert(solution.begin(), node.parent_act);
 			parent_state = node.parent;
 		}
-        std::cout << "0";
-        std::cout.flush();
+//        std::cout << "0";
+//        std::cout.flush();
 		return solution;
 	}
-    std::cout << "1";
-    std::cout.flush();
+//    std::cout << "1";
+//    std::cout.flush();
 	return {};
 }
