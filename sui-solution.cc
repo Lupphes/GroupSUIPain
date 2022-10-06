@@ -4,6 +4,7 @@
 #include <set>
 #include "memusage.h"
 #include <optional>
+#include <climits>
 
 typedef struct {
 	std::shared_ptr<SearchState> parent; // Pointer to parent SearchState
@@ -12,7 +13,7 @@ typedef struct {
 } Node;
 std::vector<SearchAction> BreadthFirstSearch::solve(const SearchState &init_state) {
 	std::set<SearchState> closed; // Closed list for SearchStates
-	std::queue<std::shared_ptr<SearchState>> open; //Open Queue for Searchstates (not expanded nodes)
+	std::queue<std::shared_ptr<SearchState>> open; // Open Queue for Searchstates (not expanded nodes)
 	std::map<std::shared_ptr<SearchState>, Node> tree; // SearchState tree
 
 	if(init_state.isFinal()){
@@ -38,7 +39,7 @@ std::vector<SearchAction> BreadthFirstSearch::solve(const SearchState &init_stat
 		/* Tracking memory */
 		auto taken_memory = getCurrentRSS();
 		if((taken_memory - old_memory)*4 + taken_memory > mem_limit_){
-			//  Taken memory + 4*difference between last round and current round
+			//  Taken memory + 4 * difference between last round and current round
 			return {};
 		}
 		old_memory = taken_memory;
@@ -149,7 +150,10 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 double StudentHeuristic::distanceLowerBound(const GameState &state) const {
 	double number_of_cards_to_free = 0;  
 	double number_of_cards_in_foundation = 0;  
-
+	// The normal value 52 was picked by calculating this value
+	// this can vary by number of stacks
+	int cards_out_of_home = king_value * colors_list.size();
+	
 	int free_spaces = 0; 
 	// Count and remember the free spaces 
 	// if there is a card, try to play it
@@ -171,44 +175,31 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const {
 		// and if yes, you should play it
 		for (const auto &free_card : free_cards) {
 			if (free_card.has_value() == opt_top->value + 1) {
-				return 52 - number_of_cards_in_foundation;
+				return cards_out_of_home - number_of_cards_in_foundation;
 			}
 		}
+		
 		// Check how many card are needed for next move and play 
-		// the move with least amount of moves
+		// the move with the least amount of moves
 		// also don't play a move when you know that there is a better one
-		int best_move = INFINITY;
-		for (const auto &card : state.stacks) {
-			std::optional<Card> new_card;
-			int count = 0;
-			// Take a new card, if you cannot submit it to next 
-			while ((new_card = card.getCard()) == std::nullopt)) {
-				if (home.canAccept(new_card)) {
+		int best_move = INT_MAX;
+		for (const auto &stack : state.stacks) {
+             // Take a new card, if home stack cannot accept it
+             // take next one and add counter
+            int count = 0;
+			for (int i = stack.storage().size(); i > 0; i--) {
+                auto new_card = stack.storage()[i];
+				if (home.canAccept(new_card))
 					break;
-				}
 				count++;
 			}
-			if (count < best_move) 
-				best_move == count;
+			 if (count < best_move) {
+			 	best_move = count;
+			 }
 		}
 	}
 
-	// The value 52 was picked by calculating this value
-	// cards_out_of_home = king_value * colors_list.size()
-
-
-	double heuristika = 52 - number_of_cards_in_foundation + number_of_cards_to_free;
-	return heuristika;
-
-
-    // int cards_out_of_home = king_value * colors_list.size();
-    // for (const auto &home : state.homes) {
-    //     auto opt_top = home.topCard();
-    //     if (opt_top.has_value())
-    //         cards_out_of_home -= opt_top->value;
-    // }
-
-    // return cards_out_of_home;
+	return cards_out_of_home - number_of_cards_in_foundation + number_of_cards_to_free;
 }
 
 typedef struct {
@@ -226,7 +217,9 @@ struct Node_Queue {
 };
 
 std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
-	if (init_state.isFinal())
+    auto old_memory = getCurrentRSS();
+
+    if (init_state.isFinal())
 		return {};
 
 	std::set<SearchState> closed;
@@ -252,6 +245,17 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 		
 
 		std::vector<SearchAction> actions = working_state.actions();
+
+        /* Tracking memory */
+        auto taken_memory = getCurrentRSS();
+        if((taken_memory - old_memory)*4 + taken_memory > mem_limit_) {
+            //  Taken memory + 4 * difference between last round and current round
+            std::cout << "1";
+            std::cout.flush();
+            return {};
+        }
+        old_memory = taken_memory;
+
 		for (auto act : actions) {
 			SearchState new_state = act.execute(working_state);
 			
@@ -284,7 +288,11 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state) {
 			solution.insert(solution.begin(), node.parent_act);
 			parent_state = node.parent;
 		}
+        std::cout << "0";
+        std::cout.flush();
 		return solution;
 	}
+    std::cout << "1";
+    std::cout.flush();
 	return {};
 }
