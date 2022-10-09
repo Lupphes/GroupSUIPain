@@ -131,7 +131,7 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 	open.push(parent_state);
 	tree.insert({parent_state, init_node});
 
-	while (!open.empty())
+	while (!open.empty() && !reached_final)
 	{
 		/* Poping from the stack */
 		auto current_parent = open.top();
@@ -161,10 +161,6 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 					break;
 				}
 			}
-		}
-		if (reached_final)
-		{
-			break;
 		}
 	}
 
