@@ -353,8 +353,8 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state)
 			solution.insert(solution.begin(), node.parent_act);
 			parent_state = node.parent;
 		}
-		std::cout << "0";
-		std::cout.flush();
+		// std::cout << "0";
+		// std::cout.flush();
 		return solution;
 	}
 	// std::cout << "1";
