@@ -17,9 +17,9 @@ struct GameState {
     GameState(const GameState &other);
     GameState& operator=(GameState &&other);
 
-    std::array<HomeDestination, nb_homes> homes;
-    std::array<FreeCell, nb_freecells> free_cells;
-    std::array<WorkStack, nb_stacks> stacks;
+    std::array<HomeDestination, nb_homes> homes; // Foundation
+    std::array<FreeCell, nb_freecells> free_cells; // Na odklad
+    std::array<WorkStack, nb_stacks> stacks; // Columns
 
     std::array<CardStorage *, nb_stacks+nb_freecells> non_homes;
     std::array<CardStorage *, nb_stacks+nb_freecells+nb_homes> all_storage;

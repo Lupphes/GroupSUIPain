@@ -5,6 +5,8 @@
 #include "memusage.h"
 #include <optional>
 #include <climits>
+#include <iostream>
+#include <vector>
 
 // Structure for BFS and DFS
 typedef struct
@@ -185,13 +187,17 @@ std::vector<SearchAction> DepthFirstSearch::solve(const SearchState &init_state)
 	return {};
 }
 
+struct Stack_Queue
+{
+	int stacks_nb;
+	WorkStack &stack;
+};
+
 double StudentHeuristic::distanceLowerBound(const GameState &state) const
 {
-	double number_of_cards_to_free = 0;
-	double number_of_cards_in_foundation = 0;
 	// The normal value 52 was picked by calculating this value
 	// this can vary by number of stacks
-	int cards_out_of_home = king_value * colors_list.size();
+	int all_cards_n = king_value * colors_list.size();
 
 	int free_spaces = 0;
 	// Count and remember the free spaces
@@ -199,59 +205,83 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const
 	std::vector<std::optional<Card>> free_cards = {};
 	for (const auto &free : state.free_cells)
 	{
-		if (free.topCard() == std::nullopt)
+		auto free_top_card = free.topCard();
+		if (free_top_card == std::nullopt)
 		{
 			free_spaces++;
 		}
 		else
 		{
-			free_cards.push_back(free.topCard());
+			free_cards.push_back(free_top_card);
 		}
 	}
-
+	bool can_use_frecell = false;
+	int cards_out_of_home = all_cards_n;
 	for (const auto &home : state.homes)
 	{
 		auto opt_top = home.topCard();
-		// Check how many cards are in foundation
 		if (opt_top.has_value())
-			number_of_cards_in_foundation += opt_top->value;
-		// Check if you can play card from free cell
-		// and if yes, you should play it
+			cards_out_of_home -= opt_top->value;
+
 		for (const auto &free_card : free_cards)
 		{
-			if (free_card.has_value() == opt_top->value + 1)
+			if (home.canAccept(*free_card))
 			{
-				return cards_out_of_home - number_of_cards_in_foundation;
+				can_use_frecell = false;
 			}
 		}
+	}
 
+	int number_of_cards_to_free = all_cards_n;
+
+	for (const auto &home : state.homes)
+	{
 		// Check how many card are needed for next move and play
 		// the move with the least amount of moves
 		// also don't play a move when you know that there is a better one
-		int best_move = INT_MAX;
+		int best_move = all_cards_n;
 		for (const auto &stack : state.stacks)
 		{
 			// Take a new card, if home stack cannot accept it
 			// take next one and add counter
 			int count = 0;
-			for (int i = stack.storage().size(); i > 0; i--)
+			for (int i = stack.storage().size(); 0 < i; i--)
 			{
 				auto new_card = stack.storage()[i];
-				//                printf("%d and %d\n", stack.storage()[i].value, stack.storage().back().value);
-				//                printf("%b a %d|", home.canAccept(new_card), count);
-				if (home.canAccept(new_card))
+				if (home.canAccept(new_card) || count >= best_move)
+				{
+					best_move = count;
 					break;
+				}
 				count++;
 			}
-			if (count < best_move)
+			if (number_of_cards_to_free > best_move)
 			{
-				best_move = count;
+				number_of_cards_to_free = best_move;
 			}
 		}
-		number_of_cards_to_free = best_move;
 	}
-	//    printf("%d", number_of_cards_to_free);
-	return (cards_out_of_home - number_of_cards_in_foundation) * state.homes.size() + number_of_cards_to_free;
+
+	// Multiplication by one doesn't change final result
+	int free_cards_factor = 1;
+	if (can_use_frecell)
+		free_cards_factor = 1; // 0.5
+
+	int empty_cols = 0;
+	for (const auto &stack : state.stacks)
+	{
+		if (stack.nbCards() == 0)
+		{
+			empty_cols++;
+		}
+	}
+	// Kdyztak otoc
+	empty_cols = state.stacks.size() - empty_cols;
+
+	// The smallest number wins
+	// The most important parameter is cards_out_of_home
+	// number_of_cards_to_free doesn't matter that much if I can use free card
+	return cards_out_of_home * 10 + (free_spaces)*2 + (number_of_cards_to_free) + empty_cols;
 }
 
 std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state)
