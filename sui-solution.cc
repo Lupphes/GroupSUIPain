@@ -215,21 +215,12 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const
 			free_cards.push_back(free_top_card);
 		}
 	}
-	bool can_use_frecell = false;
 	int cards_out_of_home = all_cards_n;
 	for (const auto &home : state.homes)
 	{
 		auto opt_top = home.topCard();
 		if (opt_top.has_value())
 			cards_out_of_home -= opt_top->value;
-
-		for (const auto &free_card : free_cards)
-		{
-			if (home.canAccept(*free_card))
-			{
-				can_use_frecell = false;
-			}
-		}
 	}
 
 	int number_of_cards_to_free = all_cards_n;
@@ -261,11 +252,6 @@ double StudentHeuristic::distanceLowerBound(const GameState &state) const
 			}
 		}
 	}
-
-	// Multiplication by one doesn't change final result
-	int free_cards_factor = 1;
-	if (can_use_frecell)
-		free_cards_factor = 1; // 0.5
 
 	int empty_cols = 0;
 	for (const auto &stack : state.stacks)
@@ -367,8 +353,8 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state)
 			solution.insert(solution.begin(), node.parent_act);
 			parent_state = node.parent;
 		}
-		// std::cout << "0";
-		// std::cout.flush();
+		std::cout << "0";
+		std::cout.flush();
 		return solution;
 	}
 	// std::cout << "1";
