@@ -304,7 +304,7 @@ std::vector<SearchAction> AStarSearch::solve(const SearchState &init_state)
 
 		/* Tracking memory */
 		auto taken_memory = getCurrentRSS();
-		if ((taken_memory - old_memory) * 4 + taken_memory > mem_limit_)
+		if ((taken_memory - old_memory) * 5 + taken_memory > mem_limit_)
 		{
 			//  Taken memory + 4 * difference between last round and current round
 			// std::cout << "1";
